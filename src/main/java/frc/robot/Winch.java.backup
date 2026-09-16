@@ -1,0 +1,152 @@
+package frc.robot;
+
+import com.revrobotics.RelativeEncoder;
+import com.revrobotics.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+/*     */ 
+/*     */ import com.revrobotics.spark.SparkMax;
+/*     */ import com.revrobotics.spark.SparkLowLevel;
+/*     */ import com.revrobotics.RelativeEncoder;
+/*     */ import com.revrobotics.spark.SparkClosedLoopController;
+/*     */ import edu.wpi.first.wpilibj.PowerDistribution;
+/*     */ import edu.wpi.first.wpilibj.Timer;
+/*     */ import edu.wpi.first.wpilibj.XboxController;
+/*     */ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class Winch
+/*     */ {
+/*  22 */   private SparkMax m_wenchMotor = new SparkMax(5, SparkLowLevel.MotorType.kBrushless);
+/*  23 */   private XboxController m_operator = new XboxController(1);
+/*     */   private SparkClosedLoopController m_wenchPidController;
+/*  25 */   private double kp_gain = 0.0D;
+/*     */   
+/*     */   private SparkMax m_winchMotor;
+/*     */   
+/*     */   private RelativeEncoder m_winchencoder;
+/*     */   
+/*     */   private Vision m_vision;
+/*     */   private static final double targetCurrentShoot = 10.0D;
+/*     */   private static final int SmartCurrentShoot = 15;
+/*     */   private static final double targetCurrentDump = 4.0D;
+/*     */   private static final int SmartCurrentDump = 2;
+/*  36 */   private Timer m_wenchDebouncTimer = new Timer();
+/*     */   private boolean timerStarted = false;
+/*     */   private boolean isWinched = false;
+/*  39 */   private PowerDistribution m_powerDistributionHub = new PowerDistribution(1, PowerDistribution.ModuleType.kRev);
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public Winch(Vision vision) {
+/*  45 */     this.m_wenchDebouncTimer.reset();
+/*  46 */     this.m_vision = vision;
+/*     */     
+/*  48 */     this.m_wenchMotor.restoreFactoryDefaults();
+/*  49 */     this.m_wenchMotor.setSmartCurrentLimit(25);
+/*  50 */     this.m_wenchMotor.setInverted(false);
+/*  51 */     this.m_wenchMotor.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/*  52 */     this.m_wenchPidController = this.m_wenchMotor.getClosedLoopController();
+/*  53 */     this.m_winchencoder = this.m_wenchMotor.getEncoder();
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public void operatorControl() {
+/*  58 */     boolean toShoot = ((this.m_operator.getBButton() && Vision.isInPosition()) || this.m_operator.getYButton());
+/*  59 */     boolean retractCatapult = (Math.abs(this.m_operator.getLeftTriggerAxis()) > 0.1D);
+/*  60 */     boolean spoolToShoot = (Math.abs(this.m_operator.getRightTriggerAxis()) > 0.1D);
+/*  61 */     boolean spoolToDump = this.m_operator.getRightBumper();
+/*  62 */     boolean targetYellow = this.m_operator.getAButton();
+/*  63 */     boolean winchatZero = (this.m_winchencoder.getPosition() > -1.0D);
+/*  64 */     boolean winchWound = (this.m_winchencoder.getVelocity() > -80.0D && this.m_winchencoder.getVelocity() < 80.0D);
+/*     */     
+/*  66 */     this.m_vision.setLEDState(targetYellow);
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/*  72 */     SmartDashboard.putNumber("Winch Rotations", this.m_winchencoder.getPosition());
+/*     */     
+/*  74 */     SmartDashboard.putNumber("Winch Output Current", this.m_wenchMotor.getOutputCurrent());
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/*  80 */     shoot(toShoot);
+/*  81 */     if (spoolToShoot && !toShoot && !retractCatapult) {
+/*  82 */       winchToShoot();
+/*  83 */     } else if (spoolToDump && !toShoot && !retractCatapult) {
+/*  84 */       winchToDump();
+/*  85 */     } else if (retractCatapult || (!spoolToShoot && !spoolToDump && !winchatZero)) {
+/*     */       
+/*  87 */       this.m_wenchMotor.set(0.35D);
+/*  88 */       this.isWinched = false;
+/*     */     } else {
+/*  90 */       this.m_wenchMotor.set(0.0D);
+/*  91 */       this.isWinched = true;
+/*     */     } 
+/*     */   }
+/*     */   
+/*     */   public void winchToDump() {
+/*  96 */     this.m_wenchMotor.setSmartCurrentLimit(2);
+/*  97 */     this.m_wenchPidController.setSetpoint(-53.0D, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/*  98 */     this.m_wenchPidController.setP(0.1D);
+/*  99 */     this.m_wenchPidController.setI(0.0D);
+/* 100 */     this.m_wenchPidController.setD(1.0E-4D);
+/* 101 */     this.m_wenchPidController.setIZone(0.0D);
+/* 102 */     this.m_wenchPidController.setFF(0.0D);
+/* 103 */     this.m_wenchPidController.setOutputRange(-0.3D, 0.0D);
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public void winchToShoot() {
+/* 108 */     this.m_wenchMotor.setSmartCurrentLimit(15);
+/* 109 */     this.m_wenchMotor.set(-0.45D);
+/*     */   }
+/*     */   
+/*     */   public void shoot(boolean toShoot) {
+/* 113 */     this.m_powerDistributionHub.setSwitchableChannel(!toShoot);
+/*     */   }
+/*     */   
+/*     */   public void printOperatorDiagnostics() {
+/* 117 */     SmartDashboard.putNumber("Output Current", this.m_wenchMotor.getOutputCurrent());
+/* 118 */     this.m_vision.publishAlignedStatusToDash();
+/*     */   }
+/*     */   
+/*     */   public boolean isWinched() {
+/* 122 */     if (Math.abs(this.m_winchencoder.getVelocity()) < 80.0D && this.m_wenchDebouncTimer.hasElapsed(1.0D)) {
+/* 123 */       this.m_wenchDebouncTimer.stop();
+/* 124 */       this.m_wenchDebouncTimer.reset();
+/* 125 */       this.timerStarted = false;
+/* 126 */       return true;
+/* 127 */     }  if (Math.abs(this.m_winchencoder.getVelocity()) < 80.0D) {
+/* 128 */       if (!this.timerStarted) {
+/* 129 */         this.m_wenchDebouncTimer.reset();
+/* 130 */         this.m_wenchDebouncTimer.start();
+/* 131 */         this.timerStarted = true;
+/*     */       } 
+/* 133 */       return false;
+/*     */     } 
+/* 135 */     return false;
+/*     */   }
+/*     */ }
+
+
+/* Location:              C:\Users\NullC\Documents\66_2023_ChargedUp.jar!\frc\robot\Winch.class
+ * Java compiler version: 11 (55.0)
+ * JD-Core Version:       1.1.3
+ */
+
+
+

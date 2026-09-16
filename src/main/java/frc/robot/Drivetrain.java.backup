@@ -1,0 +1,303 @@
+package frc.robot;
+
+import com.revrobotics.RelativeEncoder;
+import com.revrobotics.ResetMode;
+import com.revrobotics.PersistMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+/*     */ 
+/*     */ import com.revrobotics.spark.SparkMax;
+/*     */ import com.revrobotics.spark.SparkLowLevel;
+/*     */ import com.revrobotics.RelativeEncoder;
+/*     */ import com.revrobotics.spark.SparkClosedLoopController;
+/*     */ import edu.wpi.first.wpilibj.Timer;
+/*     */ import edu.wpi.first.wpilibj.XboxController;
+/*     */ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+/*     */ import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+/*     */ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class Drivetrain
+/*     */ {
+/*  27 */   private SparkMax m_leftLeader = new SparkMax(1, SparkLowLevel.MotorType.kBrushless);
+/*  28 */   private SparkMax m_leftFollower = new SparkMax(2, SparkLowLevel.MotorType.kBrushless);
+/*  29 */   private SparkMax m_rightLeader = new SparkMax(3, SparkLowLevel.MotorType.kBrushless);
+/*  30 */   private SparkMax m_rightFollower = new SparkMax(4, SparkLowLevel.MotorType.kBrushless);
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*  35 */   private XboxController m_driverXbox = new XboxController(0);
+/*     */   
+/*     */   private boolean invertRightSide = false;
+/*     */   
+/*  39 */   private final double deadzone = 0.08D;
+/*     */   
+/*  41 */   private final double speedLimit = 0.6D; private SparkClosedLoopController m_leftPidController;
+/*     */   private SparkClosedLoopController m_rightPidController;
+/*     */   private RelativeEncoder m_leftEncoder;
+/*     */   private RelativeEncoder m_rightEncoder;
+/*     */   public double kP;
+/*     */   public double kI;
+/*     */   public double kD;
+/*     */   public double kIz;
+/*     */   public double kFF;
+/*     */   public double kMaxOutput;
+/*     */   public double kMinOutput;
+/*     */   public DifferentialDrive m_diffDrive;
+/*  53 */   private Timer m_RampTimer = new Timer();
+/*     */   private boolean offRamp = false;
+/*     */   private boolean timer1Reset = false;
+/*     */   private boolean timer2Reset = false;
+/*     */   private boolean driveStart = false;
+/*  58 */   private double driveBackDist = 0.0D;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   double a;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   double b;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   double c;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void XboxDrive() {
+/* 156 */     this.m_leftLeader.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/* 157 */     this.m_leftFollower.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/* 158 */     this.m_rightLeader.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/* 159 */     this.m_rightFollower.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/*     */ 
+/*     */     
+/* 162 */     this.m_diffDrive.arcadeDrive(-this.m_driverXbox.getLeftY(), -this.m_driverXbox.getRightX() * 0.7D);
+/*     */ 
+/*     */     
+/* 165 */     this.m_diffDrive.setMaxOutput(0.8D);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void XboxDriveScaled() {
+/* 173 */     this.m_leftLeader.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/* 174 */     this.m_leftFollower.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/* 175 */     this.m_rightLeader.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/* 176 */     this.m_rightFollower.setIdleMode(com.revrobotics.spark.config.SparkBaseConfig.IdleMode.kBrake);
+/*     */     
+/* 178 */     this.m_diffDrive.setMaxOutput(0.8D);
+/*     */     
+/* 180 */     double forward = -this.m_driverXbox.getLeftY();
+/* 181 */     double turn = -this.m_driverXbox.getRightX();
+/* 182 */     double forwardScaled = customScaling(forward);
+/* 183 */     double turnScaled = customScaling(turn);
+/*     */ 
+/*     */     
+/* 186 */     this.m_diffDrive.arcadeDrive(forwardScaled, turnScaled, false);
+/*     */   }
+/*     */   
+/* 189 */   public Drivetrain() { this.a = 0.4D;
+/* 190 */     this.b = 0.1D;
+/* 191 */     this.c = 0.2D; this.m_leftFollower.follow(this.m_leftLeader); this.m_rightFollower.follow(this.m_rightLeader); this.m_leftLeader.setInverted(false); this.m_rightLeader.setInverted(true); this.m_leftPidController = this.m_leftLeader.getClosedLoopController(); this.m_rightPidController = this.m_rightLeader.getClosedLoopController(); this.m_leftEncoder = this.m_leftLeader.getEncoder(); this.m_rightEncoder = this.m_rightLeader.getEncoder(); this.m_leftEncoder.setPositionConversionFactor(0.057325580233571254D); this.m_rightEncoder.setPositionConversionFactor(0.057325580233571254D); this.kP = 0.7D; this.kI = 0.0D; this.kD = 1.0D; this.kIz = 0.0D; this.kFF = 0.0D; this.kMaxOutput = 0.3D; this.kMinOutput = -0.3D; this.m_leftPidController.setP(this.kP); this.m_leftPidController.setI(this.kI); this.m_leftPidController.setD(this.kD); this.m_leftPidController.setIZone(this.kIz); this.m_leftPidController.setFF(this.kFF); this.m_leftPidController.setOutputRange(this.kMinOutput, this.kMaxOutput); this.m_rightPidController.setP(this.kP); this.m_rightPidController.setI(this.kI); this.m_rightPidController.setD(this.kD); this.m_rightPidController.setIZone(this.kIz); this.m_rightPidController.setFF(this.kFF); this.m_rightPidController.setOutputRange(this.kMinOutput, this.kMaxOutput); this.m_diffDrive = new DifferentialDrive((MotorController)this.m_leftLeader, (MotorController)this.m_rightLeader);
+/*     */     this.m_diffDrive.setDeadband(0.01D);
+/*     */     SmartDashboard.putNumber("a xintercept", this.a);
+/*     */     SmartDashboard.putNumber("b deadband", this.b);
+/* 195 */     SmartDashboard.putNumber("c yintercept", this.c); } private double customScaling(double x) { double aa = SmartDashboard.getNumber("a xintercept", 0.0D);
+/* 196 */     double bb = SmartDashboard.getNumber("b deadband", 0.0D);
+/* 197 */     double cc = SmartDashboard.getNumber("a yintercept", 0.0D);
+/*     */ 
+/*     */     
+/* 200 */     if (aa != this.a) this.a = aa; 
+/* 201 */     if (bb != this.b) this.b = bb; 
+/* 202 */     if (cc != this.c) this.c = cc;
+/*     */     
+/* 204 */     if (x >= this.a)
+/*     */     {
+/* 206 */       return this.c + (x - this.a) * (1.0D - this.c) / (1.0D - this.a);
+/*     */     }
+/* 208 */     if (x >= 0.0D)
+/*     */     {
+/* 210 */       return this.b + (this.c - this.b) / this.a * x;
+/*     */     }
+/* 212 */     if (x >= -this.a)
+/*     */     {
+/* 214 */       return -this.b + (this.c - this.b) / this.a * x;
+/*     */     }
+/*     */ 
+/*     */     
+/* 218 */     return -this.c + (x + this.a) * (1.0D - this.c) / (1.0D - this.a); }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void resetEncoders() {
+/* 228 */     this.m_leftEncoder.setPosition(0.0D);
+/* 229 */     this.m_rightEncoder.setPosition(0.0D);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void driveStraightAndBalance() {
+/* 235 */     if (!this.driveStart) {
+/* 236 */       this.m_leftPidController.setSetpoint(Robot.setDriveDistance, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/* 237 */       this.m_rightPidController.setSetpoint(Robot.setDriveDistance, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/* 238 */       if (this.m_leftEncoder.getPosition() <= Robot.setDriveDistance + 0.1D && !this.timer1Reset) {
+/* 239 */         this.m_RampTimer.reset();
+/* 240 */         this.m_RampTimer.start();
+/* 241 */         this.m_leftEncoder.setPosition(0.0D);
+/* 242 */         this.m_rightEncoder.setPosition(0.0D);
+/* 243 */         this.timer1Reset = true;
+/* 244 */         this.driveStart = true;
+/*     */       } 
+/*     */     } 
+/*     */     
+/* 248 */     if (Robot.setOverRampState) {
+/*     */       
+/* 250 */       if (this.m_RampTimer.hasElapsed(1.0D) && !this.offRamp) {
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */         
+/* 258 */         this.m_leftPidController.setSetpoint(-1.8D, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/* 259 */         this.m_rightPidController.setSetpoint(-1.8D, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/* 260 */         if (this.m_leftEncoder.getPosition() <= -1.7D && !this.timer2Reset) {
+/* 261 */           this.m_RampTimer.reset();
+/* 262 */           this.m_RampTimer.start();
+/* 263 */           this.driveBackDist = this.m_leftEncoder.getPosition() * -1.0D;
+/* 264 */           this.m_leftEncoder.setPosition(0.0D);
+/* 265 */           this.m_rightEncoder.setPosition(0.0D);
+/* 266 */           this.timer2Reset = true;
+/* 267 */           this.offRamp = true;
+/*     */         } 
+/*     */       } 
+/* 270 */       if (this.m_RampTimer.hasElapsed(1.0D) && this.offRamp) {
+/* 271 */         this.m_leftPidController.setSetpoint(this.driveBackDist + 0.22D, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/* 272 */         this.m_rightPidController.setSetpoint(this.driveBackDist + 0.22D, com.revrobotics.spark.SparkBase.ControlType.kPosition);
+/*     */       } 
+/*     */     } 
+/*     */     
+/* 276 */     SmartDashboard.putNumber("Ramp Timer", this.m_RampTimer.get());
+/* 277 */     SmartDashboard.putBoolean("Off Ramp", this.offRamp);
+/* 278 */     SmartDashboard.putBoolean("Drive Start", this.driveStart);
+/* 279 */     SmartDashboard.putBoolean("timer1reset", this.timer1Reset);
+/* 280 */     SmartDashboard.putBoolean("timer2reest", this.timer2Reset);
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public void pushInfoToDash() {
+/* 285 */     SmartDashboard.putNumber("Left Position", this.m_leftEncoder.getPosition());
+/* 286 */     SmartDashboard.putNumber("Right Position", this.m_rightEncoder.getPosition());
+/*     */   }
+/*     */ }
+
+
+/* Location:              C:\Users\NullC\Documents\66_2023_ChargedUp.jar!\frc\robot\Drivetrain.class
+ * Java compiler version: 11 (55.0)
+ * JD-Core Version:       1.1.3
+ */
+
+
+
