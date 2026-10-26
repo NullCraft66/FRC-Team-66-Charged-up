@@ -15,5 +15,6 @@
     kStraightLongNoShoot,
     kStraightRampNoShoot;
 /*    */   }
+  public enum TestAutos { kDoNothing, kForwardFiveSeconds, kBackwardThreeSeconds, kTurnLeft, kTurnRight, kForwardThenCircle, kSquare }
 /*    */ }
 
