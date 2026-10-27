@@ -1,6 +1,7 @@
 /*     */ package frc.robot;
 /*     */ 
 /*     */ import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
 /*     */ import edu.wpi.first.util.sendable.Sendable;
 /*     */ import edu.wpi.first.wpilibj.PneumaticHub;
 /*     */ import edu.wpi.first.wpilibj.PneumaticsModuleType;
@@ -29,12 +30,14 @@
   private Winch m_winch = new Winch(this.m_vision);
 /*     */   
   private SendableChooser<Constants.AutoRoutines> m_chooser = new SendableChooser();
+  private SendableChooser<Constants.TestAutos> m_testAutoChooser = new SendableChooser();
 /*     */   
 /*     */   private boolean STATE_HAS_SHOT = false;
 /*     */   
 /*     */   private boolean STATE_IS_SHOOTING = false;
 /*     */   private boolean STATE_IS_WINCHING = false;
   private Timer m_timer = new Timer();
+  private Timer m_testAutoTimer = new Timer();
 /*     */   
   PneumaticHub m_ph = new PneumaticHub(1);
 /*     */   
@@ -55,9 +58,19 @@
     this.m_chooser.addOption("Do Nothing", Constants.AutoRoutines.kDoNothing);
 /*     */     
     SmartDashboard.putData((Sendable)this.m_chooser);
+    this.m_testAutoChooser.setDefaultOption("Do Nothing", Constants.TestAutos.kDoNothing);
+    this.m_testAutoChooser.addOption("Forward 5 Seconds", Constants.TestAutos.kForwardFiveSeconds);
+    this.m_testAutoChooser.addOption("Backward 3 Seconds", Constants.TestAutos.kBackwardThreeSeconds);
+    this.m_testAutoChooser.addOption("Turn Left", Constants.TestAutos.kTurnLeft);
+    this.m_testAutoChooser.addOption("Turn Right", Constants.TestAutos.kTurnRight);
+    this.m_testAutoChooser.addOption("Forward Then Circle", Constants.TestAutos.kForwardThenCircle);
+    this.m_testAutoChooser.addOption("Square", Constants.TestAutos.kSquare);
+    SmartDashboard.putData("Test Auto", this.m_testAutoChooser);
 /*     */ 
 /*     */     
-    CameraServer.startAutomaticCapture();
+    UsbCamera povCamera = CameraServer.startAutomaticCapture();
+    povCamera.setResolution(320, 240);
+    povCamera.setFPS(15);
 /*     */   }
 /*     */ 
 /*     */ 
@@ -91,6 +104,8 @@
 /*     */ 
 /*     */   
 /*     */   public void autonomousInit() {
+    this.m_testAutoTimer.reset();
+    this.m_testAutoTimer.start();
     this.m_drivetrain.resetEncoders();
     this.STATE_HAS_SHOT = false;
     this.STATE_IS_SHOOTING = false;
@@ -101,6 +116,48 @@
 /*     */   static boolean setOverRampState = false;
 /*     */   
 /*     */   public void autonomousPeriodic() {
+    Constants.TestAutos selectedTestAuto = this.m_testAutoChooser.getSelected();
+    if (selectedTestAuto == Constants.TestAutos.kForwardFiveSeconds) {
+      this.m_drivetrain.arcadeDrive(this.m_testAutoTimer.get() < 5.0 ? 0.35 : 0.0, 0.0);
+      return;
+    }
+    if (selectedTestAuto == Constants.TestAutos.kBackwardThreeSeconds) {
+      this.m_drivetrain.arcadeDrive(this.m_testAutoTimer.get() < 3.0 ? -0.35 : 0.0, 0.0);
+      return;
+    }
+    if (selectedTestAuto == Constants.TestAutos.kTurnLeft) {
+      this.m_drivetrain.arcadeDrive(this.m_testAutoTimer.get() < 2.0 ? 0.0 : 0.0, this.m_testAutoTimer.get() < 2.0 ? -0.35 : 0.0);
+      return;
+    }
+    if (selectedTestAuto == Constants.TestAutos.kTurnRight) {
+      this.m_drivetrain.arcadeDrive(0.0, this.m_testAutoTimer.get() < 2.0 ? 0.35 : 0.0);
+      return;
+    }
+    if (selectedTestAuto == Constants.TestAutos.kForwardThenCircle) {
+      if (this.m_testAutoTimer.get() < 5.0) {
+        this.m_drivetrain.arcadeDrive(0.35, 0.0);
+      } else if (this.m_testAutoTimer.get() < 8.0) {
+        this.m_drivetrain.arcadeDrive(0.35, 0.25);
+      } else {
+        this.m_drivetrain.arcadeDrive(0.0, 0.0);
+      }
+      return;
+    }
+    if (selectedTestAuto == Constants.TestAutos.kSquare) {
+      double time = this.m_testAutoTimer.get();
+      if (time < 2.0 || (time >= 4.0 && time < 6.0) || (time >= 8.0 && time < 10.0) || (time >= 12.0 && time < 14.0)) {
+        this.m_drivetrain.arcadeDrive(0.35, 0.0);
+      } else if (time < 4.0 || (time >= 6.0 && time < 8.0) || (time >= 10.0 && time < 12.0)) {
+        this.m_drivetrain.arcadeDrive(0.0, 0.35);
+      } else {
+        this.m_drivetrain.arcadeDrive(0.0, 0.0);
+      }
+      return;
+    }
+    if (selectedTestAuto == Constants.TestAutos.kDoNothing) {
+      this.m_drivetrain.arcadeDrive(0.0, 0.0);
+      return;
+    }
     if (this.m_chooser.getSelected() == Constants.AutoRoutines.kGoStraightRamp || this.m_chooser.getSelected() == Constants.AutoRoutines.kStraightRampNoShoot) {
       setDriveDistance = -2.2D;
       setOverRampState = true;
